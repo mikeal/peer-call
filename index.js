@@ -279,17 +279,19 @@ function joinRoom (room) {
   }
 
   getUserMedia(mediaopts, (err, audioStream) => {
-    if (err) return console.error(err)
-    if (!audioStream) return console.error('no audio')
-    let output = waudio(audioStream.clone())
-    let myelem = views.remoteAudio(storage)
-    connectAudio(myelem, output)
+    if (err) console.error(err)
 
+    let output
+    if (!audioStream) {
+      console.error('no audio')
+    } else {
+      output = waudio(audioStream.clone())
+    }
     getRtcConfig((err, rtcConfig) => {
       if (err) console.error(err) // non-fatal error
 
       let swarm = createSwarm(signalHost, {
-        stream: output.stream,
+        stream: output && output.stream,
         config: rtcConfig
       })
       swarm.joinRoom(roomHost, room)
@@ -310,8 +312,6 @@ function joinRoom (room) {
         }
       })
 
-      document.getElementById('audio-container').appendChild(myelem)
-      document.body.appendChild(recordButton)
       document.body.appendChild(views.shareButton())
       document.body.appendChild(settingsButton)
 
@@ -320,15 +320,23 @@ function joinRoom (room) {
         settingsButton.onclick = () => $(modal).modal('show')
       })
 
-      recordButton.onclick = recording(swarm, output.stream)
 
-      views.dragDrop((files) => {
-        files.forEach(file => {
-          let audio = addAudioFile(file)
-          // output.add(gain.inst)
-          audio.connect(output)
+      if (output) {
+        let myelem = views.remoteAudio(storage)
+        connectAudio(myelem, output)
+        document.getElementById('audio-container').appendChild(myelem)
+
+        document.body.appendChild(recordButton)
+        recordButton.onclick = recording(swarm, output.stream)
+
+        views.dragDrop((files) => {
+          files.forEach(file => {
+            let audio = addAudioFile(file)
+            // output.add(gain.inst)
+            audio.connect(output)
+          })
         })
-      })
+      }
     })
   })
 }
