@@ -113,7 +113,8 @@ function connectRecording (pubkey, stream) {
   let bits = 0
   stream.on('data', data => {
     bits += data.length
-    span.textContent = Math.floor(bits / 1000) + 'k'
+    let k = (bits / 8) / 1024
+    span.textContent = (k > 1024) ? (k / 1024).toFixed(2) + 'mb' : Math.floor(k) + 'kb'
   })
 
   let button = selector(`#a${pubkey} div.downloads div.button`)
