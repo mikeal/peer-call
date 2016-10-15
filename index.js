@@ -165,16 +165,19 @@ function recording (swarm, microphone) {
   let remotes = []
 
   function startRecording () {
-    let me = mediaRecorder(microphone, {
-      mimeType: 'audio/webm;codecs=opus'
-    })
     let writer = FileWriteStream()
-    me.pipe(writer)
     writer.publicKey = swarm.publicKey
-    me.publicKey = swarm.publicKey
 
-    let onFile = connectRecording('undefined', me)
-    writer.on('file', onFile)
+    let me
+    if (microphone) {
+      me = mediaRecorder(microphone, {
+        mimeType: 'audio/webm;codecs=opus'
+      })
+      me.pipe(writer)
+      me.publicKey = swarm.publicKey
+      let onFile = connectRecording('undefined', me)
+      writer.on('file', onFile)
+    }
 
     let starttime = Date.now()
 
@@ -199,7 +202,9 @@ function recording (swarm, microphone) {
     swarm.on('commands:recording', onRecording)
 
     recordButton.onclick = () => {
-      me.stop()
+      if (me) {
+        me.stop()
+      }
       remotes.forEach(commands => commands.stopRecording())
       swarm.removeListener('commands:recording', onRecording)
 
@@ -219,6 +224,10 @@ function recording (swarm, microphone) {
   }
 
   function mkrpc (peer) {
+    if (!microphone) {
+      return
+    }
+
     // Create RPC services scoped to this peer.
     let rpc = {}
     let stream
@@ -320,14 +329,13 @@ function joinRoom (room) {
         settingsButton.onclick = () => $(modal).modal('show')
       })
 
+      document.body.appendChild(recordButton)
+      recordButton.onclick = recording(swarm, output && output.stream)
 
       if (output) {
         let myelem = views.remoteAudio(storage)
         connectAudio(myelem, output)
         document.getElementById('audio-container').appendChild(myelem)
-
-        document.body.appendChild(recordButton)
-        recordButton.onclick = recording(swarm, output.stream)
 
         views.dragDrop((files) => {
           files.forEach(file => {
