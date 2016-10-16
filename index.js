@@ -282,7 +282,7 @@ function joinRoom (room) {
     if (err) return console.error(err)
     if (!audioStream) return console.error('no audio')
     let output = waudio(audioStream.clone())
-    let myelem = views.remoteAudio(storage)
+    let myelem = views.remoteAudio(storage, storage.get('username'), 'me')
     connectAudio(myelem, output)
 
     getRtcConfig((err, rtcConfig) => {
@@ -388,21 +388,36 @@ function startLoop () {
 function connectAudio (element, audio) {
   let analyser = context.createAnalyser()
   let volumeSelector = 'input[type=range]'
-  let muteSelector = 'input[type=checkbox]'
+  let muteSelector = '.audio-in input[type=checkbox]'
   let muteElement = element.querySelector(muteSelector)
-
+  let audioOutSelector = '.audio-out input[type=checkbox]'
+  let audioOutElement = element.querySelector(audioOutSelector)
   element.userGain = 1
 
   $(muteElement).checkbox('toggle').click(c => {
     let label = c.target.parentNode.querySelector('label')
     if (label.children[0].classList.contains('mute')) {
-      label.innerHTML = '<i class=\'icon unmute\'></i>'
+      label.innerHTML = '<i class=\'icon unmute grow\'></i>'
       element.querySelector(volumeSelector).disabled = false
       audio.volume(element.userGain)
     } else {
-      label.innerHTML = '<i class=\'icon mute red\'></i>'
+      label.innerHTML = '<i class=\'icon mute red grow\'></i>'
       element.querySelector(volumeSelector).disabled = true
       audio.volume(0)
+    }
+  })
+
+  $(audioOutElement).checkbox('toggle').click(c => {
+    let label = c.target.parentNode.querySelector('label')
+    if (label.children[0].classList.contains('off')) {
+      label.innerHTML = '<i class=\'icon volume up grow\'></i>'
+      masterSoundOutput.volume(element.userGain)
+    } else {
+      label.innerHTML = '<i class=\'icon volume off red grow\'></i>'
+      if($('#mute-audio-in-me').is(':checked')) {
+        $('#mute-audio-in-me').click()
+      }
+      masterSoundOutput.volume(0)
     }
   })
 

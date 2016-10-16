@@ -8,6 +8,9 @@
     <link rel="stylesheet" href="vendor/semantic.min.css" />
     <script src="vendor/semantic.min.js"></script>
     <style>
+      .hide {
+        display:none;
+      }
       .join-button {
         position: absolute;
         top: 0.78575em;
@@ -18,6 +21,8 @@
         top: 0.4em;
         right: 0.5em;
       }
+      .grow { transition: all .2s ease-in-out; }
+      .grow:hover { transform: scale(1.1); }
       .main.container {
         margin-top: 55px;
       }
