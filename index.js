@@ -338,9 +338,7 @@ function joinRoom (room) {
       byId('audio-container').appendChild(myelem)
       byId('messages-container').removeChild(message)
 
-      const topBar = bel `<div id="top-bar" />`
-      document.body.appendChild(topBar)
-
+      const topBar = byId('top-bar')
       topBar.appendChild(settingsButton)
       topBar.appendChild(views.shareButton())
       topBar.appendChild(recordButton)
