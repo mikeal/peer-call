@@ -5,8 +5,6 @@ const qs = require('querystring')
 const mediaRecorder = require('media-recorder-stream')
 const bel = require('bel')
 const FileWriteStream = require('filestream/write')
-const context = new AudioContext()
-const waudio = require('waudio')(context)
 const asyncLoad = require('async-load')
 const xhr = require('xhr')
 const UserStorage = require('./lib/storage')
@@ -26,9 +24,23 @@ const zipurl = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js'
 // Create User storage instance
 const storage = new UserStorage()
 
+if (typeof window.AudioContext !== 'function' || typeof window.MediaRecorder !== 'function') {
+  byId('messages-container').appendChild(views.message({
+    icon: 'frown',
+    type: 'warning',
+    title: 'Your browser is not supported',
+    message: 'To use rollcall, we recommend using the latest version of Chrome or Mozilla Firefox'
+  }))
+
+  throw new Error(`Unsupported browser ${window.navigator.userAgent}`)
+}
+
+const context = new AudioContext()
+const waudio = require('waudio')(context)
+
 const recordButton = bel `
 <button id="record" class="ui compact labeled icon button">
-  <i class="unmute icon"></i>
+  <i class="circle icon"></i>
   <span>Record</span>
 </button>
 `
@@ -278,10 +290,26 @@ function joinRoom (room) {
     video: false
   }
 
+  const message = views.message({
+    icon: 'unmute',
+    title: 'Rollcall would like to access your microphone'
+  })
+
+  byId('messages-container').appendChild(message)
+
   getUserMedia(mediaopts, (err, audioStream) => {
     if (err) console.error(err)
 
     let output = waudio(audioStream ? audioStream.clone() : null)
+    let myelem = views.remoteAudio(storage)
+    connectAudio(myelem, output)
+
+    message.update({
+      icon: 'notched circle loading',
+      title: 'Hang on tight',
+      message: 'We are establishing a connection to your room, please be patient...'
+    })
+
     getRtcConfig((err, rtcConfig) => {
       if (err) console.error(err) // non-fatal error
 
@@ -307,22 +335,21 @@ function joinRoom (room) {
         }
       })
 
-      let myelem = views.remoteAudio(storage)
-      connectAudio(myelem, output)
-      document.getElementById('audio-container').appendChild(myelem)
+      byId('audio-container').appendChild(myelem)
+      byId('messages-container').removeChild(message)
 
       const topBar = bel `<div id="top-bar" />`
       document.body.appendChild(topBar)
 
       topBar.appendChild(settingsButton)
       topBar.appendChild(views.shareButton())
+      topBar.appendChild(recordButton)
 
       views.settingsModal(storage).then((modal) => {
         document.body.appendChild(modal)
         settingsButton.onclick = () => $(modal).modal('show')
       })
 
-      topBar.appendChild(recordButton)
       recordButton.onclick = recording(swarm, output.stream)
 
       views.dragDrop((files) => {
