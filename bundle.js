@@ -25,12 +25,12 @@ const zipurl = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js'
 // Create User storage instance
 const storage = new UserStorage()
 
-if (typeof AudioContext !== 'function') {
+if (typeof window.AudioContext !== 'function' || window.MediaRecorder !== 'function') {
   byId('messages-container').appendChild(views.message({
     icon: 'frown',
     type: 'warning',
     title: 'Your browser is not supported',
-    message: 'To use rollcall, we recommend using the latest version of Chrome'
+    message: 'To use rollcall, we recommend using the latest version of Chrome or Mozilla Firefox'
   }))
 
   throw new Error(`Unsupported browser ${window.navigator.userAgent}`)
@@ -663,6 +663,7 @@ exports.audioFile = (file, audio, context) => {
   const button = elem.querySelector('i.play-button')
 
   const play = () => {
+    audio.volume(0)
     audio.fadeVolume(elem.userGain, 0.01)
     audio.seek(0)
     audio.play()
