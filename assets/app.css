@@ -1,0 +1,148 @@
+body {
+  background: rgba(51, 51, 51, 1);
+}
+/*=================================== Buttons ===============================*/
+.ui.buttons-wide {
+  margin-top: .25rem;
+  width: 85%;
+}
+
+.join-button {
+  position: absolute;
+  top: 0.78575em;
+  right: 0.5em;
+}
+
+.mute-button {
+  position: absolute;
+  top: 0.4em;
+  right: 0.5em;
+}
+
+.main.container {
+  margin-top: 55px;
+}
+
+.volume {
+  display:flex;
+  width:100%;
+}
+
+.mute-checkbox {
+  display:none;
+}
+
+.checkbox label {
+  cursor:pointer;
+}
+
+.volume input {
+  flex-grow:1;
+  margin-left:1em;
+}
+
+.playback-controls {
+  display:flex;
+  width:100%;
+}
+
+.playback-controls input {
+  flex-grow:1;
+  margin-left:1em;
+}
+
+.join-container {
+  background: rgba(51, 51, 51, 1);
+  display:flex;
+  justify-content:center;
+  margin-top:3em;
+  min-height: 85vh;
+  width:100%;
+}
+
+#record, #settings {
+  position: absolute;
+  top:12px;
+}
+
+#record {
+  left:70px;
+}
+
+#settings {
+  left:15px;
+  width:45px;
+}
+
+.person-name {
+  margin-bottom:10px;
+}
+
+#beats-container input {
+  margin-top:1em;
+  width: 100%;
+}
+
+.play {
+  cursor:pointer;
+}
+
+@keyframes pulse_animation {
+  0%, 50%, 100% { transform: scale(1); }
+  25%, 75% { transform: scale(1.01); }
+}
+
+.pulse {
+  animation-name: pulse_animation;
+  animation-duration: 5000ms;
+  transform-origin:70% 70%;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+  -webkit-transition: all 0.30s ease-in-out;
+  -moz-transition: all 0.30s ease-in-out;
+  -ms-transition: all 0.30s ease-in-out;
+  -o-transition: all 0.30s ease-in-out;
+  box-shadow: 0 0 5px rgba(81, 203, 238, 1) !important;
+}
+
+.download-link {
+  position:absolute;
+  top:2px;
+  right:0;
+}
+
+.local-track-title {
+  position:absolute;
+  top:2px;
+  left:8px;
+}
+
+.local-track-title {
+  padding-left:5px;
+  padding-top:2px;
+  color: rgba(0,0,0,.4);
+}
+
+.play-button {
+  cursor:pointer;
+}
+
+.text-center {
+  text-align: center;
+}
+
+/*============================ Semantic UI Overrides ========================*/
+.ui.large.buttons .or {
+  font-size: 1.5rem;
+}
+
+.ui.buttons .or:before {
+  border: 5px solid rgba(51, 51, 51, 1);
+  height: 5rem;
+  line-height: 2.75;
+  margin-top: -2.5rem;
+  margin-left: -2.5rem;
+  text-transform: uppercase;
+  top: 43vh;
+  width: 5rem;
+}
