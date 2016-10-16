@@ -165,19 +165,16 @@ function recording (swarm, microphone) {
   let remotes = []
 
   function startRecording () {
+    let me = mediaRecorder(microphone, {
+      mimeType: 'audio/webm;codecs=opus'
+    })
     let writer = FileWriteStream()
+    me.pipe(writer)
     writer.publicKey = swarm.publicKey
+    me.publicKey = swarm.publicKey
 
-    let me
-    if (microphone) {
-      me = mediaRecorder(microphone, {
-        mimeType: 'audio/webm;codecs=opus'
-      })
-      me.pipe(writer)
-      me.publicKey = swarm.publicKey
-      let onFile = connectRecording('undefined', me)
-      writer.on('file', onFile)
-    }
+    let onFile = connectRecording('undefined', me)
+    writer.on('file', onFile)
 
     let starttime = Date.now()
 
@@ -202,9 +199,7 @@ function recording (swarm, microphone) {
     swarm.on('commands:recording', onRecording)
 
     recordButton.onclick = () => {
-      if (me) {
-        me.stop()
-      }
+      me.stop()
       remotes.forEach(commands => commands.stopRecording())
       swarm.removeListener('commands:recording', onRecording)
 
@@ -224,10 +219,6 @@ function recording (swarm, microphone) {
   }
 
   function mkrpc (peer) {
-    if (!microphone) {
-      return
-    }
-
     // Create RPC services scoped to this peer.
     let rpc = {}
     let stream
@@ -290,17 +281,12 @@ function joinRoom (room) {
   getUserMedia(mediaopts, (err, audioStream) => {
     if (err) console.error(err)
 
-    let output
-    if (!audioStream) {
-      console.error('no audio')
-    } else {
-      output = waudio(audioStream.clone())
-    }
+    let output = waudio(audioStream ? audioStream.clone() : null)
     getRtcConfig((err, rtcConfig) => {
       if (err) console.error(err) // non-fatal error
 
       let swarm = createSwarm(signalHost, {
-        stream: output && output.stream,
+        stream: output.stream,
         config: rtcConfig
       })
       swarm.joinRoom(roomHost, room)
@@ -321,6 +307,10 @@ function joinRoom (room) {
         }
       })
 
+      let myelem = views.remoteAudio(storage)
+      connectAudio(myelem, output)
+      document.getElementById('audio-container').appendChild(myelem)
+
       const topBar = bel `<div id="top-bar" />`
       document.body.appendChild(topBar)
 
@@ -333,21 +323,17 @@ function joinRoom (room) {
       })
 
       topBar.appendChild(recordButton)
-      recordButton.onclick = recording(swarm, output && output.stream)
+      recordButton.onclick = recording(swarm, output.stream)
 
-      if (output) {
-        let myelem = views.remoteAudio(storage)
-        connectAudio(myelem, output)
-        document.getElementById('audio-container').appendChild(myelem)
-
-        views.dragDrop((files) => {
-          files.forEach(file => {
-            let audio = addAudioFile(file)
-            // output.add(gain.inst)
-            audio.connect(output)
-          })
+      views.dragDrop((files) => {
+        files.forEach(file => {
+          let audio = addAudioFile(file)
+          // output.add(gain.inst)
+          audio.connect(output)
         })
-      } else {
+      })
+
+      if (!audioStream) {
         topBar.appendChild(bel `<div class="error notice">Listening only: no audio input available.</div>`)
       }
     })
