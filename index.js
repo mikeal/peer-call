@@ -321,15 +321,18 @@ function joinRoom (room) {
         }
       })
 
-      document.body.appendChild(views.shareButton())
-      document.body.appendChild(settingsButton)
+      const topBar = bel `<div id="top-bar" />`
+      document.body.appendChild(topBar)
+
+      topBar.appendChild(settingsButton)
+      topBar.appendChild(views.shareButton())
 
       views.settingsModal(storage).then((modal) => {
         document.body.appendChild(modal)
         settingsButton.onclick = () => $(modal).modal('show')
       })
 
-      document.body.appendChild(recordButton)
+      topBar.appendChild(recordButton)
       recordButton.onclick = recording(swarm, output && output.stream)
 
       if (output) {
@@ -344,6 +347,8 @@ function joinRoom (room) {
             audio.connect(output)
           })
         })
+      } else {
+        topBar.appendChild(bel `<div class="error notice">Listening only: no audio input available.</div>`)
       }
     })
   })

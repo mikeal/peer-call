@@ -50,20 +50,20 @@
         justify-content:center;
         margin-top:3em;
       }
-      button#record, button#settings, button#share {
+      div#top-bar {
         position: absolute;
         top:12px;
-      }
-      button#record {
-        left:125px;
-      }
-      button#share {
-        width:45px;
-        left:70px;
-      }
-      button#settings {
         left:15px;
+        display:flex;
+        align-items:center;
+      }
+      button#settings, button#share {
         width:45px;
+      }
+      div#top-bar > div.error.notice {
+        color:darkred;
+        font-weight:bold;
+        margin-left:1em;
       }
       div.person-name {
         margin-bottom:10px;
