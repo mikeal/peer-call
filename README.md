@@ -21,7 +21,7 @@ Admittedly, Roll Call doesn’t accomplish all of this today, but what it does d
 * Reliable audio-only calls between multiple participants.
 * Audio files can be dragged into the call window and played into the call. (This is super fun, you can see it work in the gif above, why have I never seen this before?)
 * Call recording is built-in, with podcast quality recording of every participants local audio sent continuously to the recorder.
-* Relies on almost no infrastructure, the application is quite literally hosted in [gh-pages on GitHub](https://github.com/mikeal/roll-call).
+* Relies on almost no infrastructure, the application is quite literally hosted in [gh-pages on GitHub](https://github.com/mikeal/roll-call/tree/gh-pages).
 
 ---
 
