@@ -36,6 +36,11 @@
     "beefy": "^2.1.8",
     "browserify": "^13.1.0",
     "standard": "^8.4.0",
-    "watchify": "^3.7.0"
+    "watchify": "^3.7.0",
+    "wdio-mocha-framework": "^0.4.3",
+    "wdio-sauce-service": "^0.2.5",
+    "wdio-selenium-standalone-service": "0.0.7",
+    "wdio-spec-reporter": "0.0.3",
+    "webdriverio": "^4.2.16"
   }
 }

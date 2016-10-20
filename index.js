@@ -313,7 +313,8 @@ function joinRoom (room) {
     if (err) console.error(err)
 
     let output = waudio(audioStream ? audioStream.clone() : null)
-    let myelem = views.remoteAudio(storage)
+    //TODO we should assign the publickey to this element. Worried that setting this later will have cascading effects. Mikeal advice.
+    let myelem = views.remoteAudio(storage, storage.get('username'), 'me')
     connectAudio(myelem, output)
 
     message.update({
