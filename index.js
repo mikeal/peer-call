@@ -330,6 +330,7 @@ function joinRoom (room) {
         config: rtcConfig
       })
       let myinfo = {
+        image: storage.get('image') || null,
         username: storage.get('username') || null,
         publicKey: swarm.publicKey
       }
@@ -339,7 +340,8 @@ function joinRoom (room) {
         let doc = node.value
         if (doc.username && doc.publicKey) {
           usernames[doc.publicKey] = doc.username
-          $(`#a${doc.publicKey} div.person-name`).text(doc.username)
+          $(`#a${doc.publicKey} .person-name`).text(doc.username)
+          $(`#a${doc.publicKey} .avatar`).attr('src', doc.image)
         }
       })
       swarm.joinRoom(roomHost, room)

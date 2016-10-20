@@ -3,7 +3,7 @@ self.importScripts('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min
 
 self.onmessage = (e) => {
   const data = e.data || {}
-  if (e.data.type === 'compress') {
+  if (data.type === 'compress') {
     compress(data)
   }
 }

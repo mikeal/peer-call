@@ -331,6 +331,7 @@ function joinRoom (room) {
         config: rtcConfig
       })
       let myinfo = {
+        image: storage.get('image') || null,
         username: storage.get('username') || null,
         publicKey: swarm.publicKey
       }
@@ -340,7 +341,8 @@ function joinRoom (room) {
         let doc = node.value
         if (doc.username && doc.publicKey) {
           usernames[doc.publicKey] = doc.username
-          $(`#a${doc.publicKey} div.person-name`).text(doc.username)
+          $(`#a${doc.publicKey} .person-name`).text(doc.username)
+          $(`#a${doc.publicKey} .avatar`).attr('src', doc.image)
         }
       })
       swarm.joinRoom(roomHost, room)
@@ -507,7 +509,13 @@ const EventEmitter = require('events')
 
 class Storage extends EventEmitter {
   get (key) {
-    const data = JSON.parse(localStorage.getItem(this.key)) || {}
+    let data = {}
+
+    try {
+      data = JSON.parse(localStorage.getItem(this.key)) || {}
+    } catch (e) {
+      console.warn('Could not parse localStorage', e.stack)
+    }
 
     if (typeof key === 'undefined') {
       return data
@@ -518,6 +526,11 @@ class Storage extends EventEmitter {
 
   set (key, value) {
     const data = this.get()
+
+    if (data[key] === value) {
+      return
+    }
+
     data[key] = value
 
     localStorage.setItem(this.key, JSON.stringify(data))
@@ -537,7 +550,7 @@ module.exports = Storage
 
 }).call(this,require('_process'))
 },{"_process":79,"events":167}],3:[function(require,module,exports){
-/* global window, $ */
+/* global window, $, Blob, FileReader */
 const bel = require('bel')
 const funky = require('funky')
 const dragDrop = require('drag-drop')
@@ -622,7 +635,7 @@ exports.message = ({title, message, icon, type}) => {
 }
 
 const remoteAudioView = funky `
-<div class="card" id="a${item => item.key}">
+<div class="card remote-audio" id="a${item => item.key}">
   <div style="height:49px;width:290">
     <canvas id="canvas"
       width="290"
@@ -632,7 +645,12 @@ const remoteAudioView = funky `
     </canvas>
   </div>
   <div class="extra content">
-    <div contenteditable="true" class="header person-name">${item => item.username}</div>
+    <div class="header">
+      <img class="ui avatar image" src="${item => item.image}">
+      <span contenteditable="true" class="person-name">${item => item.username}</span>
+    </div>
+  </div>
+  <div class="extra content">
     <div class="volume">
       <div class="checkbox">
         <input type="checkbox" name="mute" id='mute' class='mute-checkbox'>
@@ -647,15 +665,19 @@ const remoteAudioView = funky `
 exports.remoteAudio = (storage, username, publicKey) => {
   const el = remoteAudioView({
     username: username || storage.get('username') || 'Me',
+    image: storage.get('image') || 'https://www.mautic.org/media/images/default_avatar.png',
     key: publicKey
   })
 
   // When `username` is `undefined`, Audio card belongs to the current User
   if (typeof username === 'undefined') {
     const name = $(el).find('.person-name')
+    const avatar = $(el).find('.avatar')
 
     name.blur(() => storage.set('username', name.html()))
+
     storage.on('change:username', (username) => name.html(username))
+    storage.on('change:image', (data) => avatar.attr('src', data))
   }
 
   return el
@@ -734,15 +756,19 @@ exports.dragDrop = (onDrop) => {
 
 const settingsModalView = funky `
 <div id="settings" class="ui modal">
-    <i class="close icon"></i>
-    <div class="header">Settings</div>
+  <i class="close icon"></i>
+  <div class="header">Settings</div>
   <div class="image content">
-    <div class="ui two column centered stackable grid description">
-      <div class="ui form column">
+    <div class="image">
+      <img id="user-avatar" src="${item => item.image || 'https://dummyimage.com/240x240/999999/ffffff.jpg&text=Upload+avatar'}"/>
+    </div>
+    <div class="ui one column centered stackable grid description">
+      <div class="ui form equal width column">
         <div class="field">
           <label>Name</label>
           <input type="text" name="username" placeholder="Enter your name" value="${item => item.username}">
         </div>
+        ${item => imageInputField(item.onSelect)}
         <div class="field">
           <label>Select input device</label>
           ${item => deviceSelectField('input', item.devices)}
@@ -755,6 +781,15 @@ const settingsModalView = funky `
     <div class="ui button approve">Save</div>
   </div>
 </div>`
+
+const imageInputField = (onSelect) => bel `
+<div class="field">
+  <label for="file-upload" class="ui icon button">
+    <i class="user icon"></i> Upload avatar
+  </label>
+  <input type="file" id="file-upload" onchange=${(e) => onSelect(e, this)} style="display: none">
+</div>
+`
 
 const deviceSelectField = (name, devices) => bel `<select name="${name}" class="ui dropdown">
   ${devices.map(function (device) {
@@ -773,26 +808,55 @@ function deviceToSelectOption (storage, device, i) {
   }
 }
 
+function readImageFile (element) {
+  const file = element.files[0]
+
+  if (!file) {
+    return Promise.resolve()
+  }
+
+  if (!(file instanceof Blob)) {
+    throw new TypeError('Must be a File or Blob')
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = e => resolve(e.target.result)
+    reader.onerror = e => reject(`Error reading ${file.name}: ${e.target.result}`)
+    reader.readAsDataURL(file)
+  })
+}
+
 exports.settingsModal = (storage) => {
   return navigator.mediaDevices.enumerateDevices().then((devices) => {
     return devices.filter(d => d.kind === 'audioinput')
   }).then((devices) => {
-    const modal = settingsModalView({
-      username: storage.get('username') || '',
-      devices: devices.map((device, i) => deviceToSelectOption(storage, device, i))
-    })
-
-    storage.on('change:username', (username) => {
-      modal.update({
-        username: username,
+    const model = () => {
+      return {
+        onSelect (e, field) {
+          readImageFile(e.target).then((data) => {
+            $('#user-avatar').attr('src', data)
+          })
+        },
+        image: storage.get('image'),
+        username: storage.get('username') || '',
         devices: devices.map((device, i) => deviceToSelectOption(storage, device, i))
-      })
+      }
+    }
+    const modal = settingsModalView(model())
+
+    storage.on('change', (data) => {
+      modal.update(model())
     })
 
     $(modal).modal({
       onApprove () {
         const name = $(modal).find('[name="username"]').val()
         const input = $(modal).find('[name="input"]').val()
+
+        readImageFile(document.getElementById('file-upload')).then((data) => {
+          if (typeof data === 'string') storage.set('image', data)
+        })
 
         storage.set('username', name)
         storage.set('input', input)
