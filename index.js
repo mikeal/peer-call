@@ -498,5 +498,5 @@ $(() => {
       return joinRoom(opts.room)
     }
   }
-  document.body.appendChild(views.mainButtons)
+  byId('main-container').appendChild(views.mainButtons)
 })

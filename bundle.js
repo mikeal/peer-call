@@ -499,7 +499,7 @@ $(() => {
       return joinRoom(opts.room)
     }
   }
-  document.body.appendChild(views.mainButtons)
+  byId('main-container').appendChild(views.mainButtons)
 })
 
 },{"./lib/storage":2,"./lib/views":3,"bel":41,"filestream/write":171,"getusermedia":183,"killa-beez":257,"media-recorder-stream":299,"querystring":363,"waudio":487,"xhr":499}],2:[function(require,module,exports){
