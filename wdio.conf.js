@@ -9,13 +9,13 @@ exports.config = {
     // NPM script (see https://docs.npmjs.com/cli/run-script) then the current working
     // directory is where your package.json resides, so `wdio` will be called from there.
     //
-    specs: [
-        './test/specs/**/*.js'
-    ],
+  specs: [
+    './test/specs/**/*.js'
+  ],
     // Patterns to exclude.
-    exclude: [
+  exclude: [
         // 'path/to/excluded/files'
-    ],
+  ],
     //
     // ============
     // Capabilities
@@ -32,34 +32,34 @@ exports.config = {
     // and 30 processes will get spawned. The property handles how many capabilities
     // from the same test should run tests.
     //
-    maxInstances: 10,
+  maxInstances: 10,
     //
     // If you have trouble getting all important capabilities together, check out the
     // Sauce Labs platform configurator - a great tool to configure your capabilities:
     // https://docs.saucelabs.com/reference/platforms-configurator
     //
-    capabilities: [{
+  capabilities: [{
         // maxInstances can get overwritten per capability. So if you have an in-house Selenium
         // grid with only 5 firefox instance available you can make sure that not more than
         // 5 instance gets started at a time.
-        maxInstances: 5,
+    maxInstances: 5,
         //
-        browserName: 'chrome',
-        chromeOptions: {
-        "args": [
-        "window-size=1366,768",
-        "no-proxy-server",
-        "no-default-browser-check",
-        "no-first-run",
-        "disable-boot-animation",
-        "disable-default-apps",
-        "disable-extensions",
-        "disable-translate",
-        "--use-fake-ui-for-media-stream",
-        "--use-fake-device-for-media-stream",
-          ],
-        },
-    }],
+    browserName: 'chrome',
+    chromeOptions: {
+      'args': [
+        'window-size=1366,768',
+        'no-proxy-server',
+        'no-default-browser-check',
+        'no-first-run',
+        'disable-boot-animation',
+        'disable-default-apps',
+        'disable-extensions',
+        'disable-translate',
+        '--use-fake-ui-for-media-stream',
+        '--use-fake-device-for-media-stream'
+      ]
+    }
+  }],
     //
     // ===================
     // Test Configurations
@@ -69,30 +69,30 @@ exports.config = {
     // By default WebdriverIO commands are executed in a synchronous way using
     // the wdio-sync package. If you still want to run your tests in an async way
     // e.g. using promises you can set the sync option to false.
-    sync: true,
+  sync: true,
     //
     // Level of logging verbosity: silent | verbose | command | data | result | error
-    logLevel: 'silent',
+  logLevel: 'silent',
     //
     // Enables colors for log output.
-    coloredLogs: true,
+  coloredLogs: true,
     //
     // Saves a screenshot to a given path if a command fails.
-    screenshotPath: './errorShots/',
+  screenshotPath: './errorShots/',
     //
     // Set a base URL in order to shorten url command calls. If your url parameter starts
     // with "/", then the base url gets prepended.
-    baseUrl: 'http://127.0.0.1:9966',
+  baseUrl: 'http://127.0.0.1:9966',
     //
     // Default timeout for all waitFor* commands.
-    waitforTimeout: 10000,
+  waitforTimeout: 10000,
     //
     // Default timeout in milliseconds for request
     // if Selenium Grid doesn't send response
-    connectionRetryTimeout: 90000,
+  connectionRetryTimeout: 90000,
     //
     // Default request retries count
-    connectionRetryCount: 3,
+  connectionRetryCount: 3,
     //
     // Initialize the browser instance with a WebdriverIO plugin. The object should have the
     // plugin name as key and the desired plugin options as properties. Make sure you have
@@ -116,7 +116,7 @@ exports.config = {
     // Services take over a specific job you don't want to take care of. They enhance
     // your test setup with almost no effort. Unlike plugins, they don't add new
     // commands. Instead, they hook themselves up into the test process.
-    services: ['sauce','selenium-standalone'],
+  services: ['sauce', 'selenium-standalone'],
     //
     // Framework you want to run your specs with.
     // The following are supported: Mocha, Jasmine, and Cucumber
@@ -124,19 +124,19 @@ exports.config = {
     //
     // Make sure you have the wdio adapter package for the specific framework installed
     // before running any tests.
-    framework: 'mocha',
+  framework: 'mocha',
     //
     // Test reporter for stdout.
     // The only one supported by default is 'dot'
     // see also: http://webdriver.io/guide/testrunner/reporters.html
-    reporters: ['spec'],
+  reporters: ['spec'],
 
     //
     // Options to be passed to Mocha.
     // See the full list at http://mochajs.org/
-    mochaOpts: {
-        ui: 'bdd'
-    },
+  mochaOpts: {
+    ui: 'bdd'
+  }
     //
     // =====
     // Hooks
