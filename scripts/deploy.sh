@@ -23,12 +23,12 @@ mkdir ../build/staging
 
 git fetch origin master:remotes/origin/master stable:remotes/origin/stable
 
-git checkout origin/master
+git checkout -f origin/master
 MASTER_REV=$(git rev-parse --short HEAD)
 npm run build
 copy_assets ../build/staging
 
-git checkout origin/stable
+git checkout -f origin/stable
 STABLE_REV=$(git rev-parse --short HEAD)
 npm run build
 copy_assets ../build
