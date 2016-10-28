@@ -18,7 +18,7 @@ fi
 
 REV=$(git rev-parse --short HEAD)
 
-copy_assets () { cp -r vendor favicon.png index.html bundle.js $1; }
+copy_assets () { cp -r vendor favicon.png index.html bundle.js worker.js $1; }
 
 mkdir ../build
 mkdir ../build/staging
