@@ -313,7 +313,7 @@ function joinRoom (room) {
     if (err) console.error(err)
 
     let output = waudio(audioStream ? audioStream.clone() : null)
-    let myelem = views.remoteAudio(storage)
+    let myelem = views.userAudio(storage)
     connectAudio(myelem, output)
 
     message.update({
@@ -325,34 +325,44 @@ function joinRoom (room) {
     getRtcConfig((err, rtcConfig) => {
       if (err) console.error(err) // non-fatal error
 
-      let swarm = createSwarm(signalHost, {
+      const users = {}
+      const swarm = createSwarm(signalHost, {
         stream: output.stream,
         config: rtcConfig
       })
-      let myinfo = {
+
+      swarm.log.add(null, {
         image: storage.get('image') || null,
         username: storage.get('username') || null,
         publicKey: swarm.publicKey
-      }
-      swarm.log.add(null, myinfo)
-      let usernames = {}
+      })
       swarm.feed.on('data', node => {
-        let doc = node.value
+        const doc = node.value
+
         if (doc.username && doc.publicKey) {
-          usernames[doc.publicKey] = doc.username
+          users[doc.publicKey] = doc
           $(`#a${doc.publicKey} .person-name`).text(doc.username)
+        }
+        if (doc.image && doc.publicKey) {
           $(`#a${doc.publicKey} .avatar`).attr('src', doc.image)
         }
       })
       swarm.joinRoom(roomHost, room)
       swarm.on('stream', stream => {
-        let audio = waudio(stream)
+        const audio = waudio(stream)
+        const publicKey = stream.peer.publicKey
+        const user = users[publicKey] || {}
+        const remotes = values(swarm.peers).length
+
+        const elem = views.remoteAudio({
+          username: user.username || `Caller (${remotes})`,
+          image: user.image,
+          key: publicKey
+        })
+
         audio.connect(masterSoundOutput)
-        let remotes = values(swarm.peers).length
-        let publicKey = stream.peer.publicKey
-        let username = usernames[publicKey] || `Caller (${remotes})`
-        let elem = views.remoteAudio(storage, username, publicKey)
         connectAudio(elem, audio)
+
         byId('audio-container').appendChild(elem)
       })
       swarm.on('disconnect', pubKey => {
