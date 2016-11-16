@@ -1,95 +1,95 @@
-/* global $, requestAnimationFrame, Audio, AudioContext, URL */
+/* global window, document, $, requestAnimationFrame, AudioContext, MediaRecorder, URL */
 const createSwarm = require('killa-beez')
-const funky = require('funky')
 const getUserMedia = require('getusermedia')
 const qs = require('querystring')
 const mediaRecorder = require('media-recorder-stream')
 const bel = require('bel')
-const dragDrop = require('drag-drop')
 const FileWriteStream = require('filestream/write')
-const context = new AudioContext()
-const waudio = require('waudio')(context)
-const asyncLoad = require('async-load')
 const xhr = require('xhr')
+const UserStorage = require('./lib/storage')
+const views = require('./lib/views')
 
 // Convenience functions
 const byId = id => document.getElementById(id)
 const selector = exp => document.querySelector(exp)
 const selectall = exp => document.querySelectorAll(exp)
 const values = obj => Object.keys(obj).map(k => obj[k])
-const getRandom = () => Math.random().toString(36).substring(7)
 
 // Services for exchanges.
 const signalHost = 'https://signalexchange.now.sh'
 const roomHost = 'https://roomexchange.now.sh'
-const zipurl = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js'
 
-const recordButton = bel`
+// Create User storage instance
+const storage = new UserStorage()
+
+if (typeof window.AudioContext !== 'function' || typeof window.MediaRecorder !== 'function') {
+  byId('messages-container').appendChild(views.message({
+    icon: 'frown',
+    type: 'warning',
+    title: 'Your browser is not supported',
+    message: 'To use rollcall, we recommend using the latest version of Chrome or Mozilla Firefox'
+  }))
+
+  throw new Error(`Unsupported browser ${window.navigator.userAgent}`)
+}
+
+const context = new AudioContext()
+const waudio = require('waudio')(context)
+
+const recordButton = bel `
 <button id="record" class="ui compact labeled icon button">
-  <i class="unmute icon"></i>
+  <i class="circle icon"></i>
   <span>Record</span>
 </button>
 `
 
-const audioFileView = funky`
-<div class="card">
-  <div style="height:49px;width:290">
-    <canvas id="canvas"
-      width="290"
-      height="49"
-      class="person"
-      >
-    </canvas>
-  </div>
-  <div class="extra content">
-    <div class="header person-name">${name => name}</div>
-    <div class="volume">
-      <i class="icon play play-button"></i>
-      <input type="range" min="0" max="2" step=".05" />
-    </div>
-  </div>
-</div>
+const settingsButton = bel `
+<button id="settings" class="ui compact icon button">
+  <i class="settings icon"></i>
+</button>
 `
 
-class Output {
-  constructor (stream) {
-    this.microphone = context.createMediaStreamSource(stream)
-    this.gainFilter = context.createGain()
-    this.destination = context.createMediaStreamDestination()
-    this.outputStream = this.destination.stream
-    this.microphone.connect(this.gainFilter)
-    this.gainFilter.connect(this.destination)
-    let oldtracks = stream.getAudioTracks()
-    this.outputStream.getAudioTracks().forEach(track => stream.addTrack(track))
-    oldtracks.forEach(track => stream.removeTrack(track))
-    this.stream = stream
+const mimeType = [
+  'audio/webm;codecs=opus',
+  'audio/ogg;codecs=opus',
+  'audio/ogg;codecs=vorbis'
+].filter((type) => {
+  if (typeof MediaRecorder.isTypeSupported === 'function') {
+    return MediaRecorder.isTypeSupported(type)
   }
-  add (audio) {
-    audio.connect(this.gainFilter)
+
+  return false
+})[0]
+
+const worker = new window.Worker('/worker.js')
+
+// listen for messages from the worker
+worker.onmessage = (e) => {
+  const data = e.data || {}
+
+  if (data.type === 'compressed') {
+    bel `<a href="${data.url}" download="${data.name}"></a>`.click()
+
+    $('#record i')
+      .removeClass('notched circle loading')
+      .addClass('download')
+    $('#record span')
+      .text('Download Zip')
   }
 }
 
+// This is the only
+const masterSoundOutput = waudio(true)
+
 function addAudioFile (file) {
-  let elem = audioFileView(file.name)
-  let audio = new Audio()
-  let button = elem.querySelector('i.play-button')
-  audio.src = URL.createObjectURL(file)
-  connectAudio(audio, true, elem)
-  let play = () => {
-    audio.play()
-    $(button).removeClass('play').addClass('stop')
-    button.onclick = stop
-  }
-  let stop = () => {
-    audio.pause()
-    audio.currentTime = 0
-    $(button).removeClass('stop').addClass('play')
-    button.onclick = play
-  }
-  audio.onended = stop
-  button.onclick = play
+  let audio = waudio(file)
+  audio.connect(masterSoundOutput)
+  let elem = views.audioFile(file, audio, context)
+
+  connectAudio(elem, audio)
   byId('audio-container').appendChild(elem)
-  return elem.volume
+
+  return audio
 }
 
 function recordingName (pubkey, delay) {
@@ -100,7 +100,7 @@ function recordingName (pubkey, delay) {
 
 function connectRecording (pubkey, stream) {
   let classes = 'spinner loading icon download-icon'
-  let elem = bel`
+  let elem = bel `
   <div class="downloads">
     <div class="ui inverted divider"></div>
     <div class="ui basic button record-download">
@@ -110,21 +110,22 @@ function connectRecording (pubkey, stream) {
 
   selector(`#a${pubkey} div.extra`).appendChild(elem)
   let span = selector(`#a${pubkey} span.bits`)
-  let bits = 0
+  let bytes = 0
   stream.on('data', data => {
-    bits += data.length
-    let k = (bits / 8) / 1024
-    span.textContent = (k > 1024) ? (k / 1024).toFixed(2) + 'mb' : Math.floor(k) + 'kb'
+    bytes += data.length
+    let k = bytes / 1024
+    span.textContent = (k > 1024) ? (k / 1024).toFixed(2) + 'MB' : Math.floor(k) + 'kB'
   })
+  span.textContent = ''
 
   let button = selector(`#a${pubkey} div.downloads div.button`)
   $(button).addClass('disabled')
 
   let ret = file => {
     $(`#a${pubkey} div.downloads i`)
-    .removeClass('spinner')
-    .removeClass('loading')
-    .addClass('download')
+      .removeClass('spinner')
+      .removeClass('loading')
+      .addClass('download')
 
     $(button).removeClass('disabled').addClass('enabled')
 
@@ -133,7 +134,7 @@ function connectRecording (pubkey, stream) {
     button.recordingDelay = ret.recordingDelay
     button.onclick = () => {
       let n = recordingName(pubkey, button.recordingDelay)
-      bel`<a href="${URL.createObjectURL(file)}" download="${n}"></a>`.click()
+      bel `<a href="${URL.createObjectURL(file)}" download="${n}"></a>`.click()
     }
 
     enableZipDownload()
@@ -142,7 +143,6 @@ function connectRecording (pubkey, stream) {
 }
 
 function enableZipDownload () {
-  if (!window.JSZip) return
   let elements = selectall('i.download-icon')
   for (let i = 0; i < elements.length; i++) {
     let el = elements[i]
@@ -150,40 +150,33 @@ function enableZipDownload () {
   }
 
   $('#record i')
-  .removeClass('notched circle loading')
-  .addClass('download')
+    .removeClass('notched circle loading red blink')
+    .addClass('download')
   $('#record span')
-  .text('Download Zip')
+    .text('Download Zip')
 
   let downloadZip = () => {
     recordButton.onclick = () => {}
 
     $('#record i')
-    .removeClass('download')
-    .addClass('notched circle loading')
+      .removeClass('download')
+      .addClass('notched circle loading')
     $('#record span')
-    .text('Loading...')
+      .text('Loading...')
 
-    let zip = new window.JSZip()
-    let folder = zip.folder(`${window.RollCallRoom}-tracks`)
-    Array(...selectall('div.record-download')).forEach(button => {
-      let name = recordingName(button.publicKey, button.recordingDelay)
-      let file = button.recordingFile
-      folder.file(name, file)
-    })
-    zip.generateAsync({type: 'blob'}).then(blob => {
-      let n = `${window.RollCallRoom}.zip`
-      bel`<a href="${URL.createObjectURL(blob)}" download="${n}"></a>`.click()
-
-      $('#record i')
-      .removeClass('notched circle loading')
-      .addClass('download')
-      $('#record span')
-      .text('Download Zip')
-
-      recordButton.onclick = downloadZip
+    // inform worker to create a zip file
+    worker.postMessage({
+      type: 'compress',
+      room: window.RollCallRoom,
+      files: Array(...selectall('div.record-download')).map(button => {
+        return {
+          name: recordingName(button.publicKey, button.recordingDelay),
+          file: button.recordingFile
+        }
+      })
     })
   }
+
   recordButton.onclick = downloadZip
 }
 
@@ -193,7 +186,9 @@ function recording (swarm, microphone) {
   let remotes = []
 
   function startRecording () {
-    let me = mediaRecorder(microphone, {mimeType: 'audio/webm;codecs=opus'})
+    let me = mediaRecorder(microphone, {
+      mimeType
+    })
     let writer = FileWriteStream()
     me.pipe(writer)
     writer.publicKey = swarm.publicKey
@@ -230,18 +225,17 @@ function recording (swarm, microphone) {
       swarm.removeListener('commands:recording', onRecording)
 
       $('#record i')
-      .removeClass('stop')
-      .addClass('notched circle loading')
+        .removeClass('stop')
+        .addClass('notched circle loading')
       $('#record span')
-      .text('Loading...')
-
-      asyncLoad(zipurl).then(enableZipDownload)
+        .text('Loading...')
     }
+
     $('button#record i')
-    .removeClass('unmute')
-    .addClass('stop')
+      .removeClass('unmute')
+      .addClass('red blink')
     $('#record span')
-    .text('Stop')
+      .text('Stop')
   }
 
   function mkrpc (peer) {
@@ -250,7 +244,9 @@ function recording (swarm, microphone) {
     let stream
     rpc.record = () => {
       $(recordButton).addClass('disabled')
-      stream = mediaRecorder(microphone, {mimeType: 'audio/webm;codecs=opus'})
+      stream = mediaRecorder(microphone, {
+        mimeType
+      })
       stream.pipe(peer.meth.stream(`recording:${swarm.publicKey}`))
     }
     rpc.stopRecording = () => {
@@ -273,7 +269,7 @@ function getRtcConfig (cb) {
   xhr({
     url: 'https://instant.io/rtcConfig',
     timeout: 10000
-  }, function (err, res) {
+  }, (err, res) => {
     if (err || res.statusCode !== 200) {
       cb(new Error('Could not get WebRTC config from server. Using default (without TURN).'))
     } else {
@@ -290,13 +286,38 @@ function getRtcConfig (cb) {
 
 function joinRoom (room) {
   room = `peer-call:${room}`
-  let audioopts = { echoCancellation: true, volume: 0.9 }
-  let mediaopts = { audio: audioopts, video: false }
+  const deviceId = storage.get('input')
+
+  let audioopts = {
+    echoCancellation: true,
+    volume: 0.9,
+    deviceId: deviceId ? {exact: deviceId} : undefined
+  }
+  let mediaopts = {
+    audio: audioopts,
+    video: false
+  }
+
+  const message = views.message({
+    icon: 'unmute',
+    title: 'Rollcall would like to access your microphone'
+  })
+
+  byId('messages-container').appendChild(message)
+
   getUserMedia(mediaopts, (err, audioStream) => {
-    if (err) return console.error(err)
-    if (!audioStream) return console.error('no audio')
-    let output = new Output(audioStream.clone())
-    let p = addPerson(output)
+    if (err) console.error(err)
+
+    let output = waudio(audioStream ? audioStream.clone() : null)
+    let myelem = views.remoteAudio(storage)
+    connectAudio(myelem, output)
+
+    message.update({
+      icon: 'notched circle loading',
+      title: 'Hang on tight',
+      message: 'We are establishing a connection to your room, please be patient...'
+    })
+
     getRtcConfig((err, rtcConfig) => {
       if (err) console.error(err) // non-fatal error
 
@@ -304,14 +325,28 @@ function joinRoom (room) {
         stream: output.stream,
         config: rtcConfig
       })
+      let myinfo = {
+        username: storage.get('username') || null,
+        publicKey: swarm.publicKey
+      }
+      swarm.log.add(null, myinfo)
+      let usernames = {}
+      swarm.feed.on('data', node => {
+        let doc = node.value
+        if (doc.username && doc.publicKey) {
+          usernames[doc.publicKey] = doc.username
+          $(`#a${doc.publicKey} div.person-name`).text(doc.username)
+        }
+      })
       swarm.joinRoom(roomHost, room)
       swarm.on('stream', stream => {
-        stream.peer.audioStream = stream
-        stream.publicKey = stream.peer.publicKey
-        let elem = addPerson(stream, true)
-        elem.audioStream = stream
+        let audio = waudio(stream)
+        audio.connect(masterSoundOutput)
         let remotes = values(swarm.peers).length
-        elem.querySelector('div.person-name').textContent = `Caller (${remotes})`
+        let publicKey = stream.peer.publicKey
+        let username = usernames[publicKey] || `Caller (${remotes})`
+        let elem = views.remoteAudio(storage, username, publicKey)
+        connectAudio(elem, audio)
         byId('audio-container').appendChild(elem)
       })
       swarm.on('disconnect', pubKey => {
@@ -321,55 +356,42 @@ function joinRoom (room) {
           $(`#a${pubKey}`).remove()
         }
       })
-      document.getElementById('audio-container').appendChild(p)
-      document.body.appendChild(recordButton)
 
-      recordButton.onclick = recording(swarm, output.stream)
+      byId('audio-container').appendChild(myelem)
+      byId('messages-container').removeChild(message)
 
-      dragDrop('body', {
-        onDrop: function (files, pos) {
-          files.forEach(file => {
-            let gain = addAudioFile(file)
-            output.add(gain.inst)
-          })
-        },
-        onDragOver: function () {},
-        onDragLeave: function () {}
+      const topBar = byId('top-bar')
+      topBar.appendChild(settingsButton)
+      topBar.appendChild(views.shareButton())
+      topBar.appendChild(recordButton)
+
+      views.settingsModal(storage).then((modal) => {
+        document.body.appendChild(modal)
+        settingsButton.onclick = () => $(modal).modal('show')
       })
+
+      // Show a warning message if a user can not record audio
+      if (typeof mimeType !== 'string' && typeof MediaRecorder.isTypeSupported === 'function') {
+        recordButton.setAttribute('disabled', true)
+        $(recordButton).find('span').html(`Recording not supported`)
+      } else {
+        recordButton.onclick = recording(swarm, output.stream)
+      }
+
+      views.dragDrop((files) => {
+        files.forEach(file => {
+          let audio = addAudioFile(file)
+          // output.add(gain.inst)
+          audio.connect(output)
+        })
+      })
+
+      if (!audioStream) {
+        topBar.appendChild(bel `<div class="error notice">Listening only: no audio input available.</div>`)
+      }
     })
   })
 }
-const mainButtons = funky`
-<div class="join-container">
-  <div class="ui large buttons">
-    <button id="join-party" class="ui button">Join the Party 🎉</button>
-    <div class="or"></div>
-    <button id="create-room" class="ui button">🚪 Create New Room</button>
-  </div>
-</div>`
-
-const remoteAudio = funky`
-<div class="card" id="a${id => id}">
-  <div style="height:49px;width:290">
-    <canvas id="canvas"
-      width="290"
-      height="49"
-      class="person"
-      >
-    </canvas>
-  </div>
-  <div class="extra content">
-    <div contenteditable="true" class="header person-name">Me</div>
-    <div class="volume">
-      <div class="ui toggle checkbox">
-        <input type="checkbox" name="mute">
-        <label>Mute</label>
-      </div>
-      <input type="range" min="0" max="2" step=".05" />
-    </div>
-  </div>
-</div>
-`
 
 const WIDTH = 290
 const HEIGHT = 49
@@ -424,44 +446,32 @@ function startLoop () {
   looping = true
 }
 
-function connectAudio (stream, play, element) {
-  let volume
-  if (stream instanceof Output) {
-    volume = waudio(stream.gainFilter)
-    stream = waudio(stream.stream)
-  } else {
-    stream = waudio(stream)
-    volume = waudio.gain()
-    stream.send(volume)
-  }
-
+function connectAudio (element, audio) {
   let analyser = context.createAnalyser()
-
   let volumeSelector = 'input[type=range]'
   let muteSelector = 'input[type=checkbox]'
   let muteElement = element.querySelector(muteSelector)
 
-  let formerGain = 1
+  element.userGain = 1
 
   $(muteElement).checkbox('toggle').click(c => {
     let label = c.target.parentNode.querySelector('label')
-    let state = label.textContent
-    if (state === 'Mute') {
-      c.target.parentNode.querySelector('label').textContent = 'Muted'
-      element.querySelector(volumeSelector).disabled = true
-      volume.set(0)
-    } else {
-      c.target.parentNode.querySelector('label').textContent = 'Mute'
+    if (label.children[0].classList.contains('mute')) {
+      label.innerHTML = '<i class=\'icon unmute\'></i>'
       element.querySelector(volumeSelector).disabled = false
-      volume.set(formerGain)
+      audio.volume(element.userGain)
+    } else {
+      label.innerHTML = '<i class=\'icon mute red\'></i>'
+      element.querySelector(volumeSelector).disabled = true
+      audio.volume(0)
     }
   })
 
   $(element.querySelector(volumeSelector)).change(function () {
-    volume.set(this.value)
-    formerGain = this.value
+    audio.volume(this.value)
+    element.userGain = this.value
   })
-  volume.send(analyser)
+  audio.connect(analyser)
 
   var canvas = element.querySelector('canvas.person')
   canvas.canvasCtx = canvas.getContext('2d')
@@ -471,36 +481,16 @@ function connectAudio (stream, play, element) {
   canvas.analyser = analyser
   startLoop()
 
-  if (play) {
-    volume.output()
-  }
-
-  element.stream = stream
-  element.volume = volume
-
   return element
 }
 
-function addPerson (stream, play) {
-  return connectAudio(stream, play, remoteAudio(stream.publicKey))
-}
-
-function ask () {
-  let buttons = mainButtons()
-  document.getElementById('main-container').appendChild(buttons)
-  document.getElementById('join-party').onclick = () => {
-    window.location = '?room=party'
+$(() => {
+  if (window.location.search) {
+    let opts = qs.parse(window.location.search.slice(1))
+    if (opts.room) {
+      window.RollCallRoom = opts.room
+      return joinRoom(opts.room)
+    }
   }
-  document.getElementById('create-room').onclick = () => {
-    window.location = `?room=${encodeURIComponent(getRandom())}`
-  }
-}
-
-if (!window.location.search) {
-  ask()
-} else {
-  let opts = qs.parse(window.location.search.slice(1))
-  if (!opts.room) ask()
-  else joinRoom(opts.room)
-  window.RollCallRoom = opts.room
-}
+  byId('main-container').appendChild(views.mainButtons)
+})
