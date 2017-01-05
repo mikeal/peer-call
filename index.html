@@ -29,7 +29,7 @@
       .main.container {
         margin: 55px;
       }
-      .content {
+      .static-content {
         margin: 55px;
       }
       div.volume {
@@ -75,8 +75,11 @@
         font-weight:bold;
         margin-left:1em;
       }
-      div.person-name {
+      .person-name {
+        display: inline-block;
         margin-bottom:10px;
+        height: 1em;
+        line-height: 1;
       }
       div#beats-container input {
         margin-top:1em;
@@ -122,6 +125,9 @@
       .text-center {
         text-align: center;
       }
+      #user-avatar {
+        max-width: 240px;
+      }
     </style>
   </head>
   <body class="body">
@@ -144,7 +150,7 @@
       </div>
     </div>
 
-    <div class="content">
+    <div class="static-content">
       <div class="ui vertical stripe segment">
         <div class="ui text container">
           <h3 class="ui header"><i class="phone icon"></i> Free Audio Calls From Your Browser</h3>
