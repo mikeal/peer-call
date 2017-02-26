@@ -453,7 +453,7 @@ function startLoop () {
 }
 /*
   Custom beforeunload messages have been deprecated in most browsers
-  for security reasons, but for those that support we'll pass a 
+  for security reasons, but for those that support we'll pass a
   custom message.
 */
 function showConfirmMessage (e = {}) {
@@ -462,12 +462,12 @@ function showConfirmMessage (e = {}) {
   return confirmationMessage
 }
 
-function addWindowCloseHandler() {
-  window.addEventListener("beforeunload", showConfirmMessage)
+function addWindowCloseHandler () {
+  window.addEventListener('beforeunload', showConfirmMessage)
 }
 
-function removeWindowCloseHandler() {
-  window.removeEventListener("beforeunload", showConfirmMessage)
+function removeWindowCloseHandler () {
+  window.removeEventListener('beforeunload', showConfirmMessage)
 }
 
 function connectAudio (element, audio) {
