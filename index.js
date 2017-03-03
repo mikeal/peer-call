@@ -96,15 +96,6 @@ function recordingName (pubkey, delay) {
   return text + '.webm'
 }
 
-function formatFileSize (bytes) {
-  const kB = bytes / 1000
-  if (kB >= 1000) {
-    return Math.floor(kB / 1000) + 'MB'
-  } else {
-    return Math.floor(kB) + 'kB'
-  }
-}
-
 function connectRecording (pubkey, stream) {
   let classes = 'spinner loading icon download-icon'
   let elem = bel `
@@ -120,9 +111,10 @@ function connectRecording (pubkey, stream) {
   let bytes = 0
   stream.on('data', data => {
     bytes += data.length
-    span.textContent = formatFileSize(bytes)
+    let k = bytes / 1024
+    span.textContent = (k > 1024) ? (k / 1024).toFixed(2) + 'MB' : Math.floor(k) + 'kB'
   })
-  span.textContent = formatFileSize(0)
+  span.textContent = ''
 
   let button = selector(`#a${pubkey} div.downloads div.button`)
   $(button).addClass('disabled')
